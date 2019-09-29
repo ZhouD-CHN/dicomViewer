@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env pythonw
 # -*- coding: utf-8 -*-
 # Copyright (c) 2019 Zhou Dejun
 # This file is the GUI for the dicom-rt file viewer prototype.
@@ -37,7 +37,7 @@ class DicomImg(wx.Panel):
         self.image().set_title(title)
         self.image().imshow(slice, cmap=plt.bone(), zorder=1)
 
-        if stru is True:
+        if stru is True and dicomanal.imgxystru(datadir, no) != 'No Structure File':
             structr = dicomanal.imgxystru(datadir, no)
             for struname in range(0, len(structr[0])):
                 color = structr[1][struname]
@@ -54,7 +54,7 @@ class DicomImg(wx.Panel):
             strulgd = self.image().legend(handle_str, label_str,
                                           bbox_to_anchor=(-0.02, 1), loc='upper right', borderaxespad=0.)
             self.image().add_artist(strulgd)
-        if dose is True:
+        if dose is True and dicomanal.imgxydose(datadir, no) != 'No Dose File':
             dosectr = dicomanal.imgxydose(datadir, no)
             cs = self.image().contour(dosectr[2], dosectr[0], colors=dosectr[1], zorder=3)
             lines = []
@@ -170,17 +170,17 @@ class ControlPanel(wx.Panel):
         self.imageno = int(self.imageno) + 1
         if self.imageno >= self.totalno:
             self.imageno = int(self.imageno) - self.totalno
-        self.slicno.ChangeValue(str(self.imageno))
         self.image.showimage(self.patientdir.GetValue(), self.imageno,
                              self.showstru.IsChecked(), self.showdose.IsChecked())
+        self.slicno.ChangeValue(str(self.imageno))
 
     def preslic(self, event):
         self.imageno = int(self.imageno) - 1
         if self.imageno <= 0:
             self.imageno = int(self.imageno) + self.totalno
-        self.slicno.ChangeValue(str(self.imageno))
         self.image.showimage(self.patientdir.GetValue(), self.imageno,
                              self.showstru.IsChecked(), self.showdose.IsChecked())
+        self.slicno.ChangeValue(str(self.imageno))
 
     def goslic(self, event):
         # self.imageno = int(self.jumpslicno.GetValue())

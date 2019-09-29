@@ -84,16 +84,20 @@ def imgxystru(datadir, no):
     strupath = strufile(datadir)
     slicpos = pydicom.dcmread(imgxyfile(datadir)[no - 1]).ImagePositionPatient
     pixspc = pydicom.dcmread(imgxyfile(datadir)[no - 1]).PixelSpacing
+
     if strupath == 'No Structure File':
+        print(strupath)
         return strupath
 
     if no > len(imgxyfile(datadir)):
         return 'Slice Number Out Of Range'
+
     struset = pydicom.dcmread(strupath)
+    strutotno = len(struset.ROIContourSequence)
     struname = []
     strucolor = []
-    strutotno = len(struset.ROIContourSequence)
     structr = [[] for i in range(strutotno)]
+
     for item in range(0, strutotno):
         struname.append(struset.StructureSetROISequence[item].ROIName)
         strucolor.append(rgbnorm(struset.ROIContourSequence[item].ROIDisplayColor))
@@ -117,6 +121,7 @@ def imgxystru(datadir, no):
 def imgxydose(datadir, no):
     dosepath = dosefile(datadir)
     if dosepath == 'No Dose File':
+        print(dosepath)
         return dosepath
     doseset = pydicom.dcmread(dosepath)
     slicset = pydicom.dcmread(imgxyfile(datadir)[no-1])
@@ -143,7 +148,7 @@ def imgxydose(datadir, no):
     # dosectr = [[[], [], []] for i in range(len(doseperc))]
     doseimg = np.zeros([slicrow, sliccol])
 
-    if slicpos[2] < imgpos[2] or slicpos[2] > imgpos[2] + slicthic*imgfrm:
+    if slicpos[2] < imgpos[2] or slicpos[2] >= imgpos[2] + slicthic*imgfrm:
         return doseval, dosecolor, doseimg, dosename
 
     imgpix = doseset.pixel_array[int((slicpos[2]-imgpos[2])/slicthic)]
@@ -158,9 +163,11 @@ def imgxydose(datadir, no):
 
 def drawimgxy(datadir, no, stru=False, dose=False):
     slice = imgxy(datadir, no)[0]
+    plt.figure(figsize=(11, 6))
+    plt.title('Slice Position Z = ' + str(imgxy(datadir, no)[1][2]))
     plt.imshow(slice, cmap=plt.bone(), zorder=1)
-    plt.show()
-    if stru is True:
+
+    if stru is True and imgxystru(datadir, no) != 'No Structure File':
         structr = imgxystru(datadir, no)
         for struname in range(0, len(structr[0])):
             color = structr[1][struname]
@@ -174,9 +181,9 @@ def drawimgxy(datadir, no, stru=False, dose=False):
                 if label not in label_str:
                     handle_str.append(handle)
                     label_str.append(label)
-            strulgd = plt.legend(handle_str, label_str, bbox_to_anchor=(-0.02, 1), loc='upper right', borderaxespad=0.)
+            strulgd = plt.legend(handle_str, label_str, bbox_to_anchor=(-0.1, 1), loc='upper right', borderaxespad=0.)
             plt.gca().add_artist(strulgd)
-    if dose is True:
+    if dose is True and imgxydose(datadir, no) != 'No Dose File':
         dosectr = imgxydose(datadir, no)
         lines = []
         cs = plt.contour(dosectr[2], dosectr[0], colors=dosectr[1], zorder=3)
@@ -184,7 +191,8 @@ def drawimgxy(datadir, no, stru=False, dose=False):
         if len(lines) != 1:
             doselgd = plt.legend(lines, dosectr[3], bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0.)
             plt.gca().add_artist(doselgd)
-    plt.show()
+    plt.savefig(imgxyfile(datadir)[no-1][0:-4]+'.png', dpi=100)
+    plt.close()
 
 
 def rgbnorm(rgb):
