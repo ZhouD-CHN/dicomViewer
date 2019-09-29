@@ -1,1 +1,2 @@
-# dicomViewer
+# Dicom-RT File Viewer Prototype
+
