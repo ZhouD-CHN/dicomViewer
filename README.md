@@ -1,12 +1,11 @@
 Dicom-RT File Viewer Prototype
 ===============================
-This is a prototype of a Dicom-RT File Viewer. The functions used in the GUI are described in the dicomanal.py. To see the details of the functions, please read the dicomanal.py and the comments in it. This introduciton is focused on the GUI, especially the function of the buttons. Please contact me if you have any suggestions or questions.
-
 ****
 |Author|Zhou Dejun|
 |---|---
 |E-mail|dejunzhou@outlook.com
 ****
+This is a prototype of a Dicom-RT File Viewer. The functions used in the GUI are described in the dicomanal.py. To see the details of the functions, please read the dicomanal.py and the comments in it. This introduciton is focused on the GUI, especially the function of the buttons. Please contact me if you have any suggestions or questions.
 
 <img src='https://github.com/McZhD/dicomViewer/blob/master/ScreenShot.png'>
 
