@@ -8,7 +8,7 @@ This is a prototype of a Dicom-RT File Viewer. The functions used in the GUI are
 |E-mail|dejunzhou@outlook.com
 ****
 
-[ScreenShot][https://github.com/McZhD/dicomViewer/blob/master/ScreenShot.png]
+[ScreenShot](https://github.com/McZhD/dicomViewer/blob/master/ScreenShot.png)
 
 # 1.How to start.
 This program is based on Python3, the required Modules are listed in the file requirements.txt. To run this program, put the viewergui.py and dicomanal.py in the same folder, cd to this folder and run the command "pythonw viewergui.py". Please note that the "pythonw" is used here instead of "python" here to avoid the "This program needs access to the screen" problem.
