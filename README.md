@@ -5,7 +5,7 @@ Dicom-RT File Viewer Prototype
 |---|---
 |E-mail|dejunzhou@outlook.com
 ****
-This is a prototype of a Dicom-RT File Viewer. The functions used in the GUI are described in the dicomanal.py. To see the details of the functions, please read the dicomanal.py and the comments in it. This introduciton is focused on the GUI, especially the function of the buttons. Please contact me if you have any suggestions or questions.
+This is a prototype of a Dicom-RT File Viewer. The functions used in the GUI are described in the dicomrotate.py. To see the details of the functions, please read the dicomrotate.py and the comments in it. This introduciton is focused on the GUI, especially the function of the buttons. Please contact me if you have any suggestions or questions.
 
 <img src='https://github.com/McZhD/dicomViewer/blob/master/Screen_Shot.png'>
 
@@ -29,3 +29,5 @@ If this check box is checked, the sturcture region will be displayed on the imag
 
 # 7.Show Isodose Check Box
 If this check box is checked, the dose distribution will be displayed on the image. The legend of the isodose will be showed on the right on the image. Please note that if there is no dose distribution on the image, nothing will be changed if this check box is checked.
+# 8.Remove Dot Check Box
+If this check box is checked, the function in dicomrotate.py called "remove_2d_black_dot(pixel_array)" will be used druring the plotting of ct image and isodose lines. This function is performed because sometime after we rotate the pixel array of the .dcm files, there will be some voxels left without assign a value. Then if we plot the .dcm file, there will be black dots on it. This function is expected to remove the black dots from the image.
