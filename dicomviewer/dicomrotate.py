@@ -10,7 +10,7 @@
 #4.Export 2D files
 #5.The export files can be imported into treatment planning system
 """
-Last modified on 2020-2-16
+Last modified on 2020-2-24
 
 @author: Zhou Dejun
 """
