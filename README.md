@@ -3,7 +3,7 @@ Dicom-RT File Viewer Prototype
 ****
 |Author|Zhou Dejun|
 |---|---
-|E-mail|dejunzhou@outlook.com
+|E-mail|zhoudejunchn@gmail.com
 ****
 This is a prototype of a Dicom-RT File Viewer. The functions used in the GUI are described in the dicomrotate.py. To see the details of the functions, please read the dicomrotate.py and the comments in it. This introduciton is focused on the GUI, especially the function of the buttons. Please contact me if you have any suggestions or questions.
 
