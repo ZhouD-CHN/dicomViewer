@@ -10,7 +10,7 @@
 #4.Export 2D files
 #5.The export files can be imported into treatment planning system
 """
-Last modified on 2020-2-24
+Last modified on 2020-2-16
 
 @author: Zhou Dejun
 """
@@ -23,6 +23,7 @@ from matplotlib import cm
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+import uuid
 
 class ArrayVolume(object):
      def __init__(self, Origin = None, Pivot= None,\
@@ -50,12 +51,15 @@ def build_image_volume(folder_path):
     start_position = pydicom.dcmread(file_list[0]).ImagePositionPatient
     origin = np.array(start_position)-\
               np.array([col_spacing/2, row_spacing/2, slice_thick/2])
-    pivot = pydicom.dcmread(finder_rt_plan_file(folder_path))\
+    if finder_rt_plan_file(folder_path)=='No Plan File':
+        pivot = None
+    else:
+        pivot = pydicom.dcmread(finder_rt_plan_file(folder_path))\
             [0x300a,0xb0][0][0x300a,0x111][0][0x300a,0x12c].value
     vector_x = [1,0,0]
     vector_y = [0,1,0]
     vector_z = [0,0,1]
-    data_type = 'uint'+str(init_image_ds.BitsStored)
+    data_type = 'uint'+str(init_image_ds.BitsAllocated)
     image_volume_array = []
     for frame in range(0, len(file_list)):
         image_volume_array.append\
@@ -115,7 +119,7 @@ def rotate_array_volume(array_volume, yaw, pitch, roll):
       
     return rotated_array_volume
 
-def map_rotate_array_volume(array_volume):       
+def map_array_volume(array_volume):       
     array_map_frames = array_volume.Array_Volume.shape[0]
     array_map_rows = array_volume.Array_Volume.shape[1]
     array_map_cols = array_volume.Array_Volume.shape[2]
@@ -141,78 +145,77 @@ def map_rotate_array_volume(array_volume):
                     (thickness*frames)*np.array(vector_z)
     
     return array_map
-  
+
 def resample_rotate_array_volume_zplane(array_volume, yaw, pitch, roll):
-    rotated_volume = rotate_array_volume(array_volume, yaw, pitch, roll)
-    map_rotated_volume = map_rotate_array_volume(rotated_volume)
-    vertex = volume_vertex(rotated_volume)
+    rotate_volume = rotate_array_volume(array_volume, yaw, pitch, roll)
+    map_rotate_volume = map_array_volume(rotate_volume)
+    vertex = volume_vertex(rotate_volume)
     x_list = []
     y_list = []
     z_list = []
-    for i in range(0, len(vertex)):
+    for i in range(len(vertex)):
         x_list.append(vertex[i][0])
         y_list.append(vertex[i][1])
-    for i in range(0, array_volume.Array_Volume.shape[0]):
+    for i in range(array_volume.Array_Volume.shape[0]):
         z_list.append(array_volume.Origin[2]+array_volume.Thickness*i)
     x_min = np.min(x_list)
     y_min = np.min(y_list)
     z_min = np.min(z_list)
-    z_max = np.max(z_list)+array_volume.Thickness
-    slice_cols = int((np.max(x_list)-x_min)/array_volume.Col_Spacing+1)
-    slice_rows = int((np.max(y_list)-y_min)/array_volume.Row_Spacing+1)
-    slice_frames = int((np.max(z_list)-z_min)/array_volume.Thickness+1)   
-    resampled_array =np.zeros([slice_frames, slice_rows, slice_cols],\
+    slice_col = int((np.max(x_list)-x_min)/array_volume.Col_Spacing+1)
+    slice_row = int((np.max(y_list)-y_min)/array_volume.Row_Spacing+1)
+    slice_frame = int((np.max(z_list)-z_min)/array_volume.Thickness+1)
+    resample_array =np.zeros([slice_frame, slice_row, slice_col],\
                               dtype= array_volume.Data_Type)
-    for frames in range(0, map_rotated_volume.shape[0]):
-        print('Finished resample '+str(frames+1)+' frames. Total '+\
-              str(map_rotated_volume.shape[0])+' .')
-        for rows in range(0, map_rotated_volume.shape[1]):
-            for cols in range(0, map_rotated_volume.shape[2]):
-                rotated_array_point = map_rotated_volume[frames][rows][cols]
-                if z_min < rotated_array_point[2] < z_max:
-                    x_index = int((rotated_array_point[0]-x_min)/\
-                                  array_volume.Col_Spacing)
-                    y_index = int((rotated_array_point[1]-y_min)/\
-                                  array_volume.Row_Spacing)
-                    z_index = int((rotated_array_point[2]-z_min)/\
-                                  array_volume.Thickness)
-                    resampled_array[z_index][y_index][x_index]=\
-                        rotated_volume.Array_Volume[frames][rows][cols]
-    resampled_array_volume = ArrayVolume()
-    resampled_array_volume.Array_Volume = resampled_array
-    resampled_array_volume.Origin = [x_min,y_min,z_min]
-    resampled_array_volume.Pivot = array_volume.Pivot
-    resampled_array_volume.Vector_X = [1,0,0]
-    resampled_array_volume.Vector_Y = [0,1,0]
-    resampled_array_volume.Vector_Z = [0,0,1]
-    resampled_array_volume.Col_Spacing= array_volume.Col_Spacing
-    resampled_array_volume.Row_Spacing= array_volume.Row_Spacing
-    resampled_array_volume.Thickness= array_volume.Thickness
-    
-    return resampled_array_volume
+    resample_volume = ArrayVolume()
+    resample_volume.Array_Volume = resample_array
+    resample_volume.Origin = [x_min,y_min,z_min]
+    resample_volume.Pivot = array_volume.Pivot
+    resample_volume.Vector_X = [1,0,0]
+    resample_volume.Vector_Y = [0,1,0]
+    resample_volume.Vector_Z = [0,0,1]
+    resample_volume.Col_Spacing= array_volume.Col_Spacing
+    resample_volume.Row_Spacing= array_volume.Row_Spacing
+    resample_volume.Thickness= array_volume.Thickness
+    for frame in range(resample_array.shape[0]):
+        print('Finished resample '+str(frame+1)+' frames. Total '+\
+              str(map_rotate_volume.shape[0])+' .')
+        for row in range(resample_array.shape[1]):
+            for col in range(resample_array.shape[2]):
+                correspond_rotate_index = resample_correspond_rotate(frame, row, col, 
+                                        resample_volume, rotate_volume)
+                if correspond_rotate_index != None:
+                    [x_index, y_index, z_index] = correspond_rotate_index
+                    resample_volume.Array_Volume[frame][row][col]=\
+                        resample_voxel_linear(z_index, y_index, x_index, 
+                                       rotate_volume, map_rotate_volume,
+                                       frame, row, col,
+                                       resample_volume)
 
-def export_rotated_image_files(folder_path, yaw, pitch, roll, \
-                               removedot = False):
+    return resample_volume
+
+def export_rotated_image_files(folder_path, yaw, pitch, roll):
     origin_file_list = finder_ct_image_file(folder_path)
     rotated_file_path = folder_path+\
                         '/'+'Y'+str(yaw)+'P'+str(pitch)+'R'+str(roll)
     if not os.path.exists(rotated_file_path):
-        os.makedirs(rotated_file_path)        
+        os.makedirs(rotated_file_path)      
+    new_suid = get_new_uid()
+    new_fruid = get_new_uid()
     image_volume = build_image_volume(folder_path)
     rotated_image_volume =\
-        resample_rotate_array_volume_zplane(image_volume, \
-                                            yaw, pitch, roll)
-    for files_index in range(0, len(origin_file_list)):
+        resample_rotate_array_volume_zplane(image_volume, yaw, pitch, roll)
+    for files_index in range(len(origin_file_list)):
         ds = pydicom.dcmread(origin_file_list[files_index])
         ds.Rows = rotated_image_volume.Array_Volume.shape[1]
         ds.Columns = rotated_image_volume.Array_Volume.shape[2]
+        ds.SOPInstanceUID = get_new_uid()  
+        ds.SeriesInstanceUID = new_suid
+        ds.FrameOfReferenceUID = new_fruid   
         ds.ImagePositionPatient = (np.array(rotated_image_volume.Origin)+\
                                 np.array([ds.PixelSpacing[1]/2,\
                                 ds.PixelSpacing[0]/2,\
                                 ds.SliceThickness*(files_index+1/2)])).tolist()
         rotated_image_array = rotated_image_volume.Array_Volume[files_index]
-        if removedot==True:
-            rotated_image_array = remove_2d_black_dot(rotated_image_array)
         ds.PixelData = np.array(rotated_image_array).tobytes()   
         rotated_file_name = rotated_file_path+\
                       origin_file_list[files_index][len(folder_path):-4]+\
@@ -223,17 +226,16 @@ def export_rotated_image_files(folder_path, yaw, pitch, roll, \
               ' files in total.')
     return print('Rotated '+str(len(origin_file_list))+' ct images.')
 
-def export_rotated_dose_files(folder_path, yaw, pitch, roll,\
-                              removedot = False):
+def export_rotated_dose_files(folder_path, yaw, pitch, roll):
     origin_file_path = finder_rt_dose_file(folder_path)
     rotated_file_path = folder_path+\
-                        '/'+'Y'+str(yaw)+'P'+str(pitch)+'R'+str(roll)    
-    if not os.path.exists(rotated_file_path):
-        os.makedirs(rotated_file_path)        
+                        '/'+'Y'+str(yaw)+'P'+str(pitch)+'R'+str(roll)         
     dose_volume = build_dose_volume(folder_path)
     rotated_dose_volume =\
         resample_rotate_array_volume_zplane(dose_volume, \
                                             yaw, pitch, roll)
+    if not os.path.exists(rotated_file_path):
+        os.makedirs(rotated_file_path)   
     ds = pydicom.dcmread(origin_file_path)
     frame_thickness = ds.GridFrameOffsetVector[1]-ds.GridFrameOffsetVector[0]
     ds.Rows = rotated_dose_volume.Array_Volume.shape[1]
@@ -242,10 +244,6 @@ def export_rotated_dose_files(folder_path, yaw, pitch, roll,\
                                 np.array([ds.PixelSpacing[1]/2,\
                                 ds.PixelSpacing[0]/2,\
                                 frame_thickness/2])).tolist()    
-    if removedot == True:
-        for frame in range(0, rotated_dose_volume.Array_Volume.shape[0]):
-            rotated_dose_volume.Array_Volume[frame] = \
-                remove_2d_black_dot(rotated_dose_volume.Array_Volume[frame])
     ds.PixelData = np.array(rotated_dose_volume.Array_Volume).tobytes()   
     rotated_file_name = rotated_file_path+\
                       origin_file_path[len(folder_path):-4]+\
@@ -376,9 +374,9 @@ def finder_rt_dose_file(folder_path):
 
     return dose_file_path
  
-def plot_axial_plane(folder_path, file_index, \
-                     showstructure = False, showisodose = False,\
-                     removedot = False, colormap = cm.bone):
+def plot_axial_plane(folder_path, file_index,
+                     showstructure = False, showisodose = False,
+                     colormap = cm.bone):
     file_list  = finder_ct_image_file(folder_path)
     ds = pydicom.dcmread(file_list[file_index-1])
     x_min = ds.ImagePositionPatient[0]
@@ -404,8 +402,6 @@ def plot_axial_plane(folder_path, file_index, \
     secaxx.set_xlabel('Anterior Direction [cm]')
     secaxy.set_ylabel('Left Direction [cm]')
     image_array = ds.pixel_array
-    if removedot == True:
-        image_array = remove_2d_black_dot(ds.pixel_array)
     ax.imshow(image_array,\
               extent = (x_min, x_max, y_max, y_min),cmap = cm.bone, zorder=1)
     if showisodose == True:
@@ -432,8 +428,6 @@ def plot_axial_plane(folder_path, file_index, \
         dose_y_max = dose_storage_file.ImagePositionPatient[1]+\
             (dose_storage_file.Rows+1/2)*dose_storage_file.PixelSpacing[0]
         dose_array = dose_storage_file.pixel_array[dose_z_index]
-        if removedot == True:
-            dose_array = remove_2d_black_dot(dose_array)
         dose_distribution = dose_array*dose_storage_file.DoseGridScaling
         dose_legend = legend_dose_storage(folder_path)
         ax.contour(dose_distribution, dose_legend['dose value'],\
@@ -503,15 +497,14 @@ def plot_axial_plane(folder_path, file_index, \
            
     return fig
             
-def plot_sagittal_plane(folder_path, frame_index, \
-                      showstructure = False, showisodose = False,\
-                      removedot = False, color_map = cm.bone):
+def plot_sagittal_plane(folder_path, frame_index,
+                      showstructure = False, showisodose = False,
+                      color_map = cm.bone):
     image_volume  = build_image_volume(folder_path)
-    frame_array = image_volume.Array_Volume[:,:,frame_index-1]
-
+    frame_array = np.fliplr(image_volume.Array_Volume[:,:,frame_index-1])
     x_min = image_volume.Origin[1]
     x_max = image_volume.Origin[1]+\
-        (image_volume.Array_Volume.shape[1]+1)*image_volume.Row_Spacing  
+        (image_volume.Array_Volume.shape[1]+1)*image_volume.Row_Spacing
     y_min = image_volume.Origin[2]
     y_max = image_volume.Origin[2]+\
         (image_volume.Array_Volume.shape[0]+1)*image_volume.Thickness
@@ -531,13 +524,11 @@ def plot_sagittal_plane(folder_path, frame_index, \
     ax.set_xticks(x_major_ticks)
     ax.set_yticks(y_major_ticks)
     ax.set_xlabel('Inferior Direction [cm]')
-    ax.set_ylabel('Anteriot Direction [cm]')    
+    ax.set_ylabel('Posterior Direction [cm]')    
     secaxx.set_xlabel('Superior Direction [cm]')
-    secaxy.set_ylabel('Posterior Direction [cm]')
-    if removedot == True:
-        frame_array = remove_2d_black_dot(frame_array)
+    secaxy.set_ylabel('Anterior Direction [cm]')
     ax.imshow(frame_array , cmap=color_map, \
-              extent = (x_min, x_max, y_min, y_max),\
+              extent = (x_max, x_min, y_min, y_max),\
               origin = 'lower',\
               zorder=1)
     if showisodose == True:
@@ -561,15 +552,13 @@ def plot_sagittal_plane(folder_path, frame_index, \
         dose_y_min = dose_storage_position[2]-dose_thickness/2
         dose_y_max = dose_y_min+\
             (dose_storage_file.NumberOfFrames+1)*dose_thickness
-        dose_array = dose_storage_file.pixel_array[:,:,dose_z_index]
-        if removedot == True:
-            dose_array = remove_2d_black_dot(dose_array)
+        dose_array = np.fliplr(dose_storage_file.pixel_array[:,:,dose_z_index])
         dose_distribution = dose_array*dose_storage_file.DoseGridScaling
         dose_legend = legend_dose_storage(folder_path)
         ax.contour(dose_distribution, dose_legend['dose value'],\
                     colors=dose_legend['dose color'], origin='image',\
                     linewidths = 0.5, zorder=2,\
-                    extent=(dose_x_min, dose_x_max, dose_y_max, dose_y_min))
+                    extent=(dose_x_max, dose_x_min, dose_y_max, dose_y_min))
         dose_list = []
         for item in range(0, len(dose_legend['dose name'])):
             dose_list.append(Line2D([0], [0],\
@@ -589,9 +578,9 @@ def plot_sagittal_plane(folder_path, frame_index, \
                     borderaxespad=0.))
     return fig
 
-def plot_coronal_plane(folder_path, frame_index, \
+def plot_coronal_plane(folder_path, frame_index,
                       showstructure = False, showisodose = False,
-                      removedot = False, colormap = cm.bone):
+                      colormap = cm.bone):
     image_volume  = build_image_volume(folder_path)
     frame_array = image_volume.Array_Volume[:,frame_index-1,:]
 
@@ -620,8 +609,6 @@ def plot_coronal_plane(folder_path, frame_index, \
     ax.set_ylabel('Right Direction [cm]')    
     secaxx.set_xlabel('Superior Direction [cm]')
     secaxy.set_ylabel('Left Direction [cm]')
-    if removedot == True:
-        frame_array = remove_2d_black_dot(frame_array)
     ax.imshow(frame_array, cmap=colormap, \
               extent = (x_min, x_max, y_min, y_max),\
               origin = 'lower',\
@@ -649,8 +636,6 @@ def plot_coronal_plane(folder_path, frame_index, \
         dose_y_max = dose_y_min+\
             (dose_storage_file.NumberOfFrames+1)*dose_thickness
         dose_array = dose_storage_file.pixel_array[:,dose_z_index,:]
-        if removedot == True:
-            dose_array = remove_2d_black_dot(dose_array)
         dose_distribution = dose_array*dose_storage_file.DoseGridScaling
         dose_legend = legend_dose_storage(folder_path)
         ax.contour(dose_distribution, dose_legend['dose value'],\
@@ -728,29 +713,182 @@ def RGBNormalize(rgb):
     normalized_rgb = []
     for item in range(0, 3):
         normalized_rgb.append(rgb[item]/255)
-    return normalized_rgb     
+    return normalized_rgb
 
-def remove_2d_black_dot(pixel_array):
-    for i in range(1, pixel_array.shape[0]-1):
-        for j in range(1, pixel_array.shape[1]-1):
-            if pixel_array[i][j] == 0:   
-                neighbors = [pixel_array[i-1][j-1], pixel_array[i-1][j],\
-                             pixel_array[i-1][j+1],\
-                             pixel_array[i][j-11], pixel_array[i][j+1],\
-                             pixel_array[i+1][j-1], pixel_array[i+1][j],\
-                             pixel_array[i+1][j+1]]
-                if neighbors.count(0) <= 3:
-                    neighbors_nozero = []
-                    for k in range(0, len(neighbors)):
-                        if neighbors[k] != 0:
-                            neighbors_nozero.append(neighbors[k])
-                    pixel_array[i][j] = np.average(neighbors_nozero)
-    return pixel_array
-    
-    
+def get_new_uid():
+    root = str('2.25.')
+    suffix = str(uuid.uuid1().int)
+    new_uid = root+suffix
+    return new_uid
 
- 
-    
+def index_to_coordinate(frame, row, col, volume):
+    init_center = np.array(volume.Origin)+\
+                    (volume.Col_Spacing/2)*np.array(volume.Vector_X)+\
+                    (volume.Row_Spacing/2)*np.array(volume.Vector_Y)+\
+                    (volume.Thickness/2)*np.array(volume.Vector_Z)
+    [x, y, z] = init_center+\
+                    (volume.Col_Spacing*col)*np.array(volume.Vector_X)+\
+                    (volume.Row_Spacing*row)*np.array(volume.Vector_Y)+\
+                    (volume.Thickness*frame)*np.array(volume.Vector_Z)
 
+    return [x, y, z]
+
+def resample_correspond_rotate(resample_frame, resample_row, resample_col,
+                               resample_volume, rotate_volume):
+    resample_center = index_to_coordinate(resample_frame, resample_row, 
+                                          resample_col, resample_volume)
+    rotate_initial = index_to_coordinate(0, 0, 0, rotate_volume)
+    vector = np.array(resample_center)-np.array(rotate_initial)
+    [rotate_col, rotate_row, rotate_frame]= np.multiply(\
+              np.linalg.solve(np.array([[rotate_volume.Vector_X[0],
+                                         rotate_volume.Vector_Y[0],
+                                         rotate_volume.Vector_Z[0]],
+                                        [rotate_volume.Vector_X[1],
+                                         rotate_volume.Vector_Y[1],
+                                         rotate_volume.Vector_Z[1]],
+                                        [rotate_volume.Vector_X[2],
+                                         rotate_volume.Vector_Y[2],
+                                         rotate_volume.Vector_Z[2]]]),
+                                        vector),
+              [1/rotate_volume.Col_Spacing, 
+               1/rotate_volume.Row_Spacing,
+               1/rotate_volume.Thickness]).astype(int)
+    if 0<=rotate_col<rotate_volume.Array_Volume.shape[2] and\
+       0<=rotate_row<rotate_volume.Array_Volume.shape[1] and\
+       0<=rotate_frame<rotate_volume.Array_Volume.shape[0]:
+        return [rotate_col, rotate_row, rotate_frame]
+    else:
+        return None
+
+def resample_voxel_linear(rotate_frame, rotate_row, rotate_col,
+                   rotate_volume, map_rotate_voxel,
+                   resample_frame, resample_row, resample_col, 
+                   resample_volume):
+    resample_value = rotate_volume.Array_Volume[rotate_frame][rotate_row][rotate_col]
+    resample_voxel_center = index_to_coordinate(resample_frame, resample_row, resample_col, 
+                   resample_volume)
+    vector = np.array(resample_voxel_center)-\
+        np.array(map_rotate_voxel[rotate_frame][rotate_row][rotate_col])
+    [deviate_x, deviate_y, deviate_z] = np.linalg.solve(\
+                              np.array([[rotate_volume.Vector_X[0],
+                                         rotate_volume.Vector_Y[0],
+                                         rotate_volume.Vector_Z[0]],
+                                        [rotate_volume.Vector_X[1],
+                                         rotate_volume.Vector_Y[1],
+                                         rotate_volume.Vector_Z[1]],
+                                        [rotate_volume.Vector_X[2],
+                                         rotate_volume.Vector_Y[2],
+                                         rotate_volume.Vector_Z[2]]]),
+                                        vector)
+    if deviate_x>=0:
+        if rotate_col+1 <= rotate_volume.Array_Volume.shape[2]-1:
+            delta = int(rotate_volume.Array_Volume[rotate_frame][rotate_row][rotate_col+1])-int(resample_value)
+            distance = np.abs(deviate_x)
+            resample_value = resample_value+delta*distance*rotate_volume.Col_Spacing**-1
+    if deviate_x<0:
+        if rotate_col-1 >= 0:
+            delta = int(rotate_volume.Array_Volume[rotate_frame][rotate_row][rotate_col-1])-int(resample_value)
+            distance = np.abs(deviate_x)
+            resample_value = resample_value+delta*distance*rotate_volume.Col_Spacing**-1
+    if deviate_y>=0:
+        if rotate_row+1 <= rotate_volume.Array_Volume.shape[1]-1:
+            delta = int(rotate_volume.Array_Volume[rotate_frame][rotate_row+1][rotate_col])-int(resample_value)
+            distance = np.abs(deviate_y)
+            resample_value = resample_value+delta*distance*rotate_volume.Row_Spacing**-1
+    if deviate_y<0:
+        if rotate_row-1 >= 0:
+            delta = int(rotate_volume.Array_Volume[rotate_frame][rotate_row-1][rotate_col])-int(resample_value)
+            distance = np.abs(deviate_y)
+            resample_value = resample_value+delta*distance*rotate_volume.Row_Spacing**-1
+    if deviate_z>=0:
+        if rotate_frame+1 <= rotate_volume.Array_Volume.shape[0]-1:
+            delta = int(rotate_volume.Array_Volume[rotate_frame+1][rotate_row][rotate_col])-int(resample_value)
+            distance = np.abs(deviate_z)
+            resample_value = resample_value+delta*distance*rotate_volume.Thickness**-1
+    if deviate_z<0:
+        if rotate_frame-1 >= 0:
+            delta = int(rotate_volume.Array_Volume[rotate_frame-1][rotate_row][rotate_col])-int(resample_value)
+            distance = np.abs(deviate_z)
+            resample_value = resample_value+delta*distance*rotate_volume.Thickness**-1
+                
+    return resample_value
+
+def resample_voxel_square(rotate_frame, rotate_row, rotate_col,
+                   rotate_volume, map_rotate_voxel,
+                   resample_frame, resample_row, resample_col, 
+                   resample_volume):
+    rotate_array = rotate_volume.Array_Volume
+    resample_value = rotate_array[rotate_frame][rotate_row][rotate_col]
     
+    resample_voxel_center = index_to_coordinate(resample_frame, resample_row, resample_col, 
+                   resample_volume)
+    vector = np.array(resample_voxel_center)-\
+        np.array(map_rotate_voxel[rotate_frame][rotate_row][rotate_col])
+    [deviate_x, deviate_y, deviate_z] = np.linalg.solve(\
+                              np.array([[rotate_volume.Vector_X[0],
+                                         rotate_volume.Vector_Y[0],
+                                         rotate_volume.Vector_Z[0]],
+                                        [rotate_volume.Vector_X[1],
+                                         rotate_volume.Vector_Y[1],
+                                         rotate_volume.Vector_Z[1]],
+                                        [rotate_volume.Vector_X[2],
+                                         rotate_volume.Vector_Y[2],
+                                         rotate_volume.Vector_Z[2]]]),
+                                        vector)
+    if 0 < rotate_col < rotate_array.shape[2]-1:
+        coord = [-rotate_volume.Col_Spacing, 0, rotate_volume.Col_Spacing]
+        value = [rotate_array[rotate_frame][rotate_row][rotate_col-1],
+                 resample_value,
+                 rotate_array[rotate_frame][rotate_row][rotate_col+1]]
+        resample_value = np.poly1d(np.polyfit(coord, value, 2))(deviate_x)
+    elif rotate_col == 0:
+        coord = [0, rotate_volume.Col_Spacing]
+        value = [resample_value,
+                 rotate_array[rotate_frame][rotate_row][rotate_col+1]]
+        resample_value = np.poly1d(np.polyfit(coord, value, 1))(deviate_x)
+    else:
+        coord = [-rotate_volume.Col_Spacing, 0]
+        value = [rotate_array[rotate_frame][rotate_row][rotate_col-1],
+                 resample_value]
+        resample_value = np.poly1d(np.polyfit(coord, value, 1))(deviate_x)
     
+    if 0 < rotate_row < rotate_array.shape[1]-1:
+        coord = [-rotate_volume.Row_Spacing, 0, rotate_volume.Row_Spacing]
+        value = [rotate_array[rotate_frame][rotate_row-1][rotate_col],
+                 resample_value,
+                 rotate_array[rotate_frame][rotate_row+1][rotate_col]]
+        resample_value = np.poly1d(np.polyfit(coord, value, 2))(deviate_y)
+    elif rotate_row == 0:
+        coord = [0, rotate_volume.Row_Spacing]
+        value = [resample_value,
+                 rotate_array[rotate_frame][rotate_row+1][rotate_col]]
+        resample_value = np.poly1d(np.polyfit(coord, value, 1))(deviate_y)
+    else:
+        coord = [-rotate_volume.Row_Spacing, 0]
+        value = [rotate_array[rotate_frame][rotate_row-1][rotate_col],
+                 resample_value]
+        resample_value = np.poly1d(np.polyfit(coord, value, 1))(deviate_y)
+        
+    if 0 < rotate_frame < rotate_array.shape[0]-1:
+        coord = [-rotate_volume.Thickness, 0, rotate_volume.Thickness]
+        value = [rotate_array[rotate_frame-1][rotate_row][rotate_col],
+                 resample_value,
+                 rotate_array[rotate_frame+1][rotate_row][rotate_col]]
+        resample_value = np.poly1d(np.polyfit(coord, value, 2))(deviate_z)
+    elif rotate_frame == 0:
+        coord = [0, rotate_volume.Thickness]
+        value = [resample_value,
+                 rotate_array[rotate_frame+1][rotate_row][rotate_col]]
+        resample_value = np.poly1d(np.polyfit(coord, value, 1))(deviate_z)
+    else:
+        coord = [-rotate_volume.Thickness, 0]
+        value = [rotate_array[rotate_frame-1][rotate_row][rotate_col],
+                 resample_value]
+        resample_value = np.poly1d(np.polyfit(coord, value, 1))(deviate_z)
+
+    if resample_value<0:
+        resample_value = 0
+        
+    return resample_value
+
+

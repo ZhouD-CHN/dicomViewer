@@ -30,12 +30,11 @@ class DicomImg(wx.Panel):
 
 
     def showimage(self, folder_path, file_index, \
-                  show_structure=False, show_isodose=False, remove_dot=False):
+                  show_structure=False, show_isodose=False):
         self.fig.clf() 
         size_pixel = tuple(self.GetSize())
         figure =  dicomrotate.plot_axial_plane(folder_path, file_index,\
-                showstructure = show_structure, showisodose = show_isodose,\
-                removedot=remove_dot)
+                showstructure = show_structure, showisodose = show_isodose)
         figure.set_figwidth(size_pixel[0]/100)
         figure.set_figheight(size_pixel[1]/100)
         self.canvas.figure = figure
@@ -126,9 +125,6 @@ class ControlPanel(wx.Panel):
                                     wx.DefaultPosition, wx.DefaultSize, 0)
         sizer3.Add(self.showdose, 0, wx.ALL, 5)
         
-        self.removedot = wx.CheckBox(self, wx.ID_ANY, u"Remove Dot", \
-                                     wx.DefaultPosition, wx.DefaultSize, 0)
-        sizer3.Add(self.removedot, 0, wx.ALL, 5)
 
         topSizer.Add(sizer3, 1, wx.EXPAND, 5)
 
@@ -138,7 +134,6 @@ class ControlPanel(wx.Panel):
         self.jump.Bind(wx.EVT_BUTTON, self.goslic)
         self.showstru.Bind(wx.EVT_CHECKBOX, self.reload)
         self.showdose.Bind(wx.EVT_CHECKBOX, self.reload)
-        self.removedot.Bind(wx.EVT_CHECKBOX, self.reload)
 
         self.SetSizer(topSizer)
         self.Layout()
@@ -156,16 +151,14 @@ class ControlPanel(wx.Panel):
             self.patientdir.ChangeValue(datapath)
         dlg.Destroy()
         self.image.showimage(self.patientdir.GetValue(), self.imageno,
-                        self.showstru.IsChecked(), self.showdose.IsChecked(),
-                        self.removedot.IsChecked())
+                        self.showstru.IsChecked(), self.showdose.IsChecked())
 
     def nextslic(self, event):
         self.imageno = int(self.imageno) + 1
         if self.imageno >= self.totalno:
             self.imageno = int(self.imageno) - self.totalno
         self.image.showimage(self.patientdir.GetValue(), self.imageno,
-                        self.showstru.IsChecked(), self.showdose.IsChecked(),
-                        self.removedot.IsChecked())
+                        self.showstru.IsChecked(), self.showdose.IsChecked())
         self.slicno.ChangeValue(str(self.imageno))
 
     def preslic(self, event):
@@ -173,21 +166,18 @@ class ControlPanel(wx.Panel):
         if self.imageno <= 0:
             self.imageno = int(self.imageno) + self.totalno
         self.image.showimage(self.patientdir.GetValue(), self.imageno,
-                        self.showstru.IsChecked(), self.showdose.IsChecked(),
-                        self.removedot.IsChecked())
+                        self.showstru.IsChecked(), self.showdose.IsChecked())
         self.slicno.ChangeValue(str(self.imageno))
 
     def goslic(self, event):
         self.image.showimage(self.patientdir.GetValue(), self.imageno,
-                        self.showstru.IsChecked(), self.showdose.IsChecked(),
-                        self.removedot.IsChecked())
+                        self.showstru.IsChecked(), self.showdose.IsChecked())
         self.slicno.ChangeValue(self.jumpslicno.GetValue())
         self.imageno = int(self.jumpslicno.GetValue())
 
     def reload(self, event):
         self.image.showimage(self.patientdir.GetValue(), self.imageno,
-                        self.showstru.IsChecked(), self.showdose.IsChecked(),
-                        self.removedot.IsChecked())
+                        self.showstru.IsChecked(), self.showdose.IsChecked())
 
 
 class Main(wx.Frame):
