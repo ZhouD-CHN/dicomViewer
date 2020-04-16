@@ -1,11 +1,11 @@
-Dicom-RT File Viewer Prototype
+Dicom-CT Image Viewer Prototype
 ===============================
 ****
 |Author|Zhou Dejun|
 |---|---
 |E-mail|zhoudejunchn@gmail.com
 ****
-This is a prototype of a Dicom-RT File Viewer. The functions used in the GUI are described in the dicomrotate.py. To see the details of the functions, please read the dicomrotate.py and the comments in it. This introduciton is focused on the GUI, especially the function of the buttons. Please contact me if you have any suggestions or questions.
+This is a prototype of a Dicom-CT Image Viewer. The functions used in the GUI are described in the dicomrotate.py. To see the details of the functions, please read the dicomrotate.py and the comments in it. This introduciton is focused on the GUI, especially the function of the buttons. Please contact me if you have any suggestions or questions.
 
 <img src='https://github.com/McZhD/dicomViewer/blob/master/ScreenShot.png'>
 
